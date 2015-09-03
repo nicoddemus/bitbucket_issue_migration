@@ -17,73 +17,62 @@
 # along with the bitbucket issue migration script.
 # If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import print_function, unicode_literals
-
-import argparse
-import getpass
+from __future__ import print_function
+import click
 import operator
-import itertools
-
-import github
-
-try:
-    import keyring
-except ImportError:
-    # keyring isn't available, so mock the interface to simulate no pw
-    class Keyring:
-        get_password = staticmethod(lambda system, username: None)
-
-try:
-    import json
-except ImportError:
-    import simplejson as json
-
-from six import text_type
-from six.moves import urllib
-from jaraco.itertools import Counter
+import requests
 
 
-def read_arguments():
-    parser = argparse.ArgumentParser(
-        description=(
-            "A tool to migrate issues from Bitbucket to GitHub.\n"
-            "note: the Bitbucket repository and issue tracker have to be"
-            "public"
-        )
-    )
+class MiniClient(object):
+    def __init__(self, base_url, session=None):
+        self.session = session or requests.Session()
+        self.base_url = base_url
 
-    parser.add_argument(
-        "bitbucket_username",
-        help="Bitbucket username of the source repository."
-    )
+    @classmethod
+    def with_token(cls, base_url, api_token):
+        session = requests.Session()
+        session.headers.update({
+            'Authorization': 'token ' + api_token
+        })
+        return cls(base_url=base_url, session=session)
 
-    parser.add_argument(
-        "bitbucket_repo",
-        help="Bitbucket project name for the source repo."
-    )
+    def get(self, url):
+        return self.session.get(self.base_url + url).json()
 
-    parser.add_argument(
-        "github_username",
-        help="Your GitHub username"
-    )
 
-    parser.add_argument(
-        "github_repo",
-        help="GitHub to add issues to. Format: <username>/<repo name>"
-    )
+@click.command(help=(
+    "A tool to migrate issues from Bitbucket to GitHub.\n"
+    "note: the Bitbucket repository and issue tracker have to be"
+    "public"
+))
+@click.argument('bitbucket_repo')
+@click.argument('github_repo')
+@click.option('--start-id', default=0, type=int)
+@click.option('--create', is_flag=True)
+@click.option('--dry-run', is_flag=True)
+@click.option('--api-token', metavar='api_token',
+              envvar="GITHUB_API_TOKEN", type=str)
+def migrate(bitbucket_repo, create, github_repo, api_token, dry_run, start_id):
+    bb = MiniClient(
+        "https://api.bitbucket.org/1.0/repositories/" +
+        bitbucket_repo + '/issues')
+    issues = iter_issues(bb, start_id)
+    # gh = MiniClient()
+    for issue in issues:
+        issue.pop('content')
+        click.echo(issue)
 
-    parser.add_argument(
-        "-n", "--dry-run",
-        action="store_true", dest="dry_run", default=False,
-        help="Perform a dry run and print eveything."
-    )
 
-    parser.add_argument(
-        "-f", "--start_id", type=int, dest="start", default=0,
-        help="Bitbucket issue id from which to start import"
-    )
-
-    return parser.parse_args()
+def iter_issues(bb, start_id):
+    while True:
+        url = '/?start_id={start_id}'.format(start_id=start_id)
+        result = bb.get(url)
+        if not result['issues']:
+            break
+        start_id += len(result['issues'])
+        print (start_id)
+        for item in result['issues']:
+            yield item
 
 
 # Formatters
@@ -101,39 +90,30 @@ def format_user(author_info):
 
 
 def format_name(issue):
-    if 'reported_by' in issue:
-        return format_user(issue['reported_by'])
-    else:
-        return "Anonymous"
+    return format_user(issue.get('reported_by'))
 
 
 def format_body(options, issue):
     content = clean_body(issue['content'])
     return """{}
 
-{}
-- Bitbucket: https://bitbucket.org/{}/{}/issue/{}
+
+- Bitbucket: https://bitbucket.org/{}/issue/{}
 - Originally reported by: {}
 - Originally created at: {}
 """.format(
         content,
-        '-' * 40,
-        options.bitbucket_username, options.bitbucket_repo, issue['local_id'],
+        options.bitbucket_repo,
+        issue['local_id'],
         format_name(issue),
         issue['created_on']
     )
 
 
 def format_comment(comment):
-    return """{}
+    return """Original comment by {user}
 
-{}
-Original comment by: {}
-""".format(
-        comment['body'],
-        '-' * 40,
-        comment['user'],
-    )
+{body}""".format(**commemt)
 
 
 def clean_body(body):
@@ -158,12 +138,12 @@ def clean_body(body):
     return "\n".join(lines)
 
 
-def get_comments(bb_url, issue):
+def get_comments(bb, issue):
     '''
     Fetch the comments for a Bitbucket issue
     '''
-    url = "{bb_url}/{issue[local_id]}/comments/".format(**locals())
-    result = json.loads(urllib.request.urlopen(url).read().decode('utf-8'))
+    url = "/{local_id}/comments/".format(**issue)
+    result = bb.get(url).json()
     by_creation_date = operator.itemgetter("utc_created_on")
     ordered = sorted(result, key=by_creation_date)
     # filter only those that have content; status comments (assigned,
@@ -184,80 +164,11 @@ def _parse_comment(comment):
     )
 
 
-class Handler(object):
-    bb_base = "https://api.bitbucket.org/1.0/repositories/"
-    bb_tmpl = bb_base + "{bitbucket_username}/{bitbucket_repo}/issues"
+class SubmitHandler():
 
-    def __init__(self, options):
-        self.options = options
-        self.bb_url = self.bb_tmpl.format(**vars(options))
-
-    @classmethod
-    def best(cls):
-        options = read_arguments()
-        handler_cls = SubmitHandler if not options.dry_run else DryRunHandler
-        return handler_cls(options)
-
-    def get_issues(self):
-        issues = self._iter_issues(self.options.start)
-        # In order to sync issue numbers on a freshly-created Github project,
-        # sort the issues by local_id
-        # Note: not memory efficient and could use too much memory on large
-        # projects.
-        by_local_id = operator.itemgetter('local_id')
-        return sorted(issues, key=by_local_id)
-
-    def run(self):
-        self.issues = Counter(self.get_issues())
-        for issue in self.issues:
-            self.handle(issue)
-        print("Created", self.issues.count, "issues")
-
-    def get_comments(self, issue):
-        return get_comments(self.bb_url, issue)
-
-    def _iter_issues(self, start_id):
-        '''
-        Fetch the issues from Bitbucket, one page at a time.
-        '''
-        url = "{self.bb_url}/?start={start_id}".format(**locals())
-
-        try:
-            response = urllib.request.urlopen(url)
-        except urllib.error.HTTPError as ex:
-            ex.message = (
-                'Problem trying to connect to bitbucket ({url}): {ex} '
-                'Hint: the bitbucket repository name is case-sensitive.'
-                .format(url=url, ex=ex)
-            )
-            raise
-
-        result = json.loads(response.read().decode('utf-8'))
-        if not result['issues']:
-            # No issues encountered at or above start_id
-            raise StopIteration()
-
-        next_start = start_id + len(result['issues'])
-        res = itertools.chain(result['issues'], self._iter_issues(next_start))
-        for item in res:
-            yield item
-
-
-class SubmitHandler(Handler):
-    def run(self):
-        # push them in GitHub (issues comments are fetched here)
-        github_password = (
-            keyring.get_password('Github', self.options.github_username) or
-            getpass.getpass("Please enter your GitHub password\n")
-        )
-        self.github = github.Github(
-            login_or_token=self.options.github_username,
-            password=github_password,
-        )
-        return super(SubmitHandler, self).run()
 
     def handle(self, issue):
-        comments = self.get_comments(issue)
+        comments = get_comments(issue)
         body = format_body(self.options, issue)
         self.push_issue(issue, body, comments)
 
@@ -296,15 +207,5 @@ class SubmitHandler(Handler):
         ))
 
 
-class DryRunHandler(Handler):
-    def handle(self, issue):
-        comments = self.get_comments(issue)
-        body = format_body(self.options, issue)
-        print("Title: {}".format(issue['title']))
-        print("Body: {}".format(body))
-        list(map(format_comment, comments))
-        print("Comments", [comment['body'] for comment in comments])
-
-
 if __name__ == "__main__":
-    Handler.best().run()
+    migrate()
