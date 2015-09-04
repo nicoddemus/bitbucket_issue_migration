@@ -1,37 +1,47 @@
+from __future__ import print_function
 import operator
 
 from .util import MiniClient
-from .formating import format_user
+from .formating import format_name, format_user
 
-ISSUES_API = "https://api.bitbucket.org/1.0/repositories/{repo}/issues"
+REPO_API = "https://api.bitbucket.org/1.0/repositories/{repo}"
 
 
 def get_client(repo):
     """
     :param repo: bitbucket repository as {name}/{repo} string
     """
-    return MiniClient(ISSUES_API.format(repo=repo))
+    return MiniClient(REPO_API.format(repo=repo))
 
 
-def iter_issues(client, start_id):
+def iter_issues(client):
+    start_id = 0
+
     while True:
-        url = '/?start_id={start_id}'.format(start_id=start_id)
+        print('start', start_id)
+        url = '/issues/?start={start_id}'.format(start_id=start_id)
         result = client.get(url)
         if not result['issues']:
             break
         start_id += len(result['issues'])
-        print (start_id)
         for item in result['issues']:
             yield item
 
 
+def simple_issue(issue):
+    return {
+        'id': issue['local_id'],
+        'status': issue['status'],
+        'content': issue['content'],
+        'title': issue['title'],
+        'reported_user': format_name(issue),
+        'utc_last_updated': issue['utc_last_updated'],
+    }
+
+
 def get_comments(client, issue_id):
-    url = "/{id}/comments/".format(id=issue_id)
-    result = client.get(url)
-    by_creation_date = operator.itemgetter("utc_created_on")
-    ordered = sorted(result, key=by_creation_date)
-    filtered = filter(operator.itemgetter('content'), ordered)
-    list(map(_parse_comment, filtered))
+    url = "/issues/{id}/comments/".format(id=issue_id)
+    return client.get(url)
 
 
 def _parse_comment(comment):

@@ -37,13 +37,13 @@ def format_body(options, issue):
 def format_comment(comment):
     return """Original comment by {user}
 
-{body}""".format(**commemt)
+{body}""".format(**comment)
 
 
 def clean_body(body):
     lines = []
     in_block = False
-    for line in text_type(body).splitlines():
+    for line in body.splitlines():
         if line.startswith("{{{") or line.startswith("}}}"):
             if "{{{" in line:
                 before, part, after = line.partition("{{{")
