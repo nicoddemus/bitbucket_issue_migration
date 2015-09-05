@@ -1,58 +1,22 @@
 from pathlib import Path
-import attr
 import click
 from . import json
 from . import bitbucket
 
 
-@attr.s
-class Config(object):
-    root = attr.ib()
-
-    def __getattr__(self, key):
-        return json.load(self._path, {})[key]
-
-    @property
-    def _path(self):
-        return self.root.joinpath('migrate_to_github.json')
-
-    def _write(self, data):
-        json.dump(data, self._path)
-
-    def update(self, **changes):
-        data = json.load(self._path, {})
-        data.update(changes)
-        self._write(data)
-
-
-@click.group()
+@click.group(chain=True)
 @click.pass_context
-@click.option('--path', type=click.Path(), default='.')
-def main(ctx, path):
-    ctx.obj = Config(Path(path))
-
-
-@main.command()
-@click.pass_obj
-@click.argument('kv', nargs=-1)
-def configure(config, kv):
-    config.update(dict(x.split('=', 1) for x in kv))
-
-
-@main.command()
-@click.pass_obj
-@click.argument('repo')
-def init_bitbucket(config, repo):
-    config.update(bitbucket_repo=repo)
-
-
-@main.command()
-@click.pass_obj
-def fetch_issues(config):
-    target = config.root.joinpath('issues/from_bitbucket')
+def main(ctx):
+    ctx.obj = target = Path('issues')
     if not target.is_dir():
         target.mkdir(parents=True)
-    client = bitbucket.get_client(config.bitbucket_repo)
+
+
+@main.command()
+@click.pass_obj
+@click.argument('bitbucket_repo')
+def fetch_issues(target, bitbucket_repo):
+    client = bitbucket.get_client(bitbucket_repo)
     issues = bitbucket.iter_issues(client)
     with click.progressbar(issues,
                            length=len(issues),
@@ -62,18 +26,34 @@ def fetch_issues(config):
         for issue in bar:
             json.dump(
                 issue,
-                target.joinpath('{local_id:05d}.json'.format(**issue)))
+                target.joinpath('bb_{local_id:05d}.json'.format(**issue)))
 
 
 @main.command()
 @click.pass_obj
-def simplify_bitbucket_issues(config):
-    source = config.root.joinpath('issues/from_bitbucket')
-    target = config.root.joinpath('issues/simpe_bitbucket')
-    if not target.is_dir():
-        target.mkdir(parents=True)
-    for issue in source.glob('*.json'):
-        data = json.load(issue)
-        simplified = bitbucket.simplify_issue(
-            data, repo=config.bitbucket_repo)
-        json.dump(simplified, target.joinpath(issue.name))
+@click.argument('bitbucket_repo')
+def simplify_bitbucket_issues(target, bitbucket_repo):
+    items = list(target.glob('bb_*.json'))
+    with click.progressbar(
+            items, show_pos=True, show_percent=True,
+            label='Preparing Github Import Requests') as bar:
+        for issue in bar:
+            data = json.load(issue)
+            simplified = bitbucket.simplify_issue(data, repo=bitbucket_repo)
+            json.dump(simplified, target.joinpath('simple_' + issue.name))
+
+
+@main.command()
+@click.pass_obj
+@click.argument('github_repo')
+@click.option('--token', envvar='GITHUB_TOKEN')
+def upload_issues(target, github_repo, token):
+    from . import github
+    items = list(target.glob('simple_bb_*.json'))
+    client = github.get_client(github_repo, token)
+    with click.progressbar(
+            items, show_pos=True, show_percent=True,
+            label='Uploading Github Import Requests') as bar:
+        for issue in bar:
+            with issue.open() as fp:
+                client.post('', fp.read())

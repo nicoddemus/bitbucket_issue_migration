@@ -60,8 +60,9 @@ def simplify_issue(bb_issue, repo):
     issue['title'] = bb_issue['title']
     from .formating import format_body
     issue['body'] = format_body(bb_issue, repo)
-
-    issue['comments'] = [
+    if bb_issue['status'] in 'closed wontfix resolved':
+        issue['closed'] = True
+    simplified['comments'] = [
         {'body': format_comment(_parse_comment(x))}
         for x in bb_issue['comments']
     ]
