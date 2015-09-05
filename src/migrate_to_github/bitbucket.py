@@ -1,8 +1,7 @@
 from __future__ import print_function
-import operator
 
 from .util import MiniClient
-from .formating import format_name, format_user
+from .formating import format_user, format_comment
 
 REPO_API = "https://api.bitbucket.org/1.0/repositories/{repo}"
 
@@ -14,34 +13,59 @@ def get_client(repo):
     return MiniClient(REPO_API.format(repo=repo))
 
 
-def iter_issues(client):
-    start_id = 0
+class iter_issues(object):
+    def __init__(self, client):
+        self.client = client
+        self._pop = None
+        self._real_iter = None
+        self._count = None
 
+    def __iter__(self):
+        return self
+
+    def __len__(self):
+        if self._count is None:
+            assert self._pop is None
+            self._pop = next(self)
+        return self._count
+
+    def __next__(self):
+        if self._real_iter is None:
+            self._real_iter = fetch_issues(self, self.client.get)
+        if self._pop is None:
+            return next(self._real_iter)
+        else:
+            result, self._pop = self._pop, None
+            return result
+
+
+def fetch_issues(_iter, get):
+    start_id = 0
     while True:
-        print('start', start_id)
-        url = '/issues/?start={start_id}'.format(start_id=start_id)
-        result = client.get(url)
+        issue_url = '/issues/?start={start_id}'.format(start_id=start_id)
+        result = get(issue_url)
+        _iter._count = result['count']
         if not result['issues']:
             break
         start_id += len(result['issues'])
         for item in result['issues']:
+            comment_url = '/issues/{id}/comments/'.format(id=item['local_id'])
+            item['comments'] = get(comment_url)
             yield item
 
 
-def simple_issue(issue):
-    return {
-        'id': issue['local_id'],
-        'status': issue['status'],
-        'content': issue['content'],
-        'title': issue['title'],
-        'reported_user': format_name(issue),
-        'utc_last_updated': issue['utc_last_updated'],
-    }
+def simplify_issue(bb_issue, repo):
+    simplified = {}
+    issue = simplified['issue'] = {}
+    issue['title'] = bb_issue['title']
+    from .formating import format_body
+    issue['body'] = format_body(bb_issue, repo)
 
-
-def get_comments(client, issue_id):
-    url = "/issues/{id}/comments/".format(id=issue_id)
-    return client.get(url)
+    issue['comments'] = [
+        {'body': format_comment(_parse_comment(x))}
+        for x in bb_issue['comments']
+    ]
+    return simplified
 
 
 def _parse_comment(comment):
@@ -52,5 +76,4 @@ def _parse_comment(comment):
         user=format_user(comment['author_info']),
         created_at=comment['utc_created_on'],
         body=comment['content'],
-        number=comment['comment_id'],
-    )
+        number=comment['comment_id'], )

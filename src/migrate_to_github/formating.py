@@ -17,20 +17,20 @@ def format_name(issue):
     return format_user(issue.get('reported_by'))
 
 
-def format_body(options, issue):
+def format_body(issue, repo):
     content = clean_body(issue['content'])
-    return """{}
+    return """{body}
 
 
-- Bitbucket: https://bitbucket.org/{}/issue/{}
-- Originally reported by: {}
-- Originally created at: {}
+- Bitbucket: https://bitbucket.org/{repo}/issue/{id}
+- Originally reported by: {user}
+- Originally created at: {created_on}
 """.format(
-        content,
-        options.bitbucket_repo,
-        issue['local_id'],
-        format_name(issue),
-        issue['created_on']
+        body=content,
+        repo=repo,
+        id=issue['local_id'],
+        user=format_name(issue),
+        created_on=issue['created_on'],
     )
 
 
