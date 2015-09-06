@@ -5,7 +5,8 @@ python:
 - "3.4"
 - "3.3"
 install:
-  - pip install -e . pytest flake8
+  - pip install pytest flake8 setuptools_scm d2to1
+  - pip install -e .
 script:
   - py.test testing
   - flake8 testing src setup.py
