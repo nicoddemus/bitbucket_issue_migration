@@ -50,11 +50,12 @@ class Poster(object):
         self.session.headers.update({
             'Authorization': 'token ' + api_token,
             'Accept': 'application/vnd.github.golden-comet-preview+json',
+            'User-Agent': 'Bulk issue importer 0.1'
         })
         self.base_url = base_url.format(**args)
 
-    def __call__(self, url, data):
-        response = self.session.post(self.base_url + url, data=data)
+    def __call__(self,  data):
+        response = self.session.post(self.base_url, data=data)
         if response.status_code in (200, 202):
             return response.json()
         else:
