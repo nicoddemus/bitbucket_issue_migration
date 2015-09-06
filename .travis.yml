@@ -3,8 +3,9 @@ language: python
 cache: pip
 python:
 - "3.4"
-- "3.5"
-- "3.6"
+- "3.3"
 install:
-  - pip install -e . pytest
-script: py.test testing
+  - pip install -e . pytest flake9
+script:
+  - py.test testing
+  - flake8 testing src setup.py
