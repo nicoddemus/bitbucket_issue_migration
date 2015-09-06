@@ -1,6 +1,6 @@
 from pathlib import Path
 import click
-from . import json
+from . import util
 from . import bitbucket
 
 
@@ -16,17 +16,17 @@ def main(ctx):
 @click.pass_obj
 @click.argument('bitbucket_repo')
 def fetch_issues(target, bitbucket_repo):
-    client = bitbucket.get_client(bitbucket_repo)
-    issues = bitbucket.iter_issues(client)
+    get = util.Getter(bitbucket.REPO_API, repo=bitbucket_repo)
+    issues = bitbucket.iter_issues(get)
     with click.progressbar(issues,
                            length=len(issues),
                            show_pos=True,
                            show_percent=True,
                            label="Fetching Issues") as bar:
         for issue in bar:
-            json.dump(
-                issue,
-                target.joinpath('bb_{local_id:05d}.json'.format(**issue)))
+            util.dump(
+                issue, target,
+                'bb_{id:05d}.json', id=issue['local_id'])
 
 
 @main.command()
@@ -34,13 +34,13 @@ def fetch_issues(target, bitbucket_repo):
 @click.argument('bitbucket_repo')
 def simplify_bitbucket_issues(target, bitbucket_repo):
     items = list(target.glob('bb_*.json'))
-    with click.progressbar(
-            items, show_pos=True, show_percent=True,
-            label='Preparing Github Import Requests') as bar:
+    with util.progress(items, label='Preparing Github Import Requests') as bar:
         for issue in bar:
-            data = json.load(issue)
+            data = util.load(issue)
             simplified = bitbucket.simplify_issue(data, repo=bitbucket_repo)
-            json.dump(simplified, target.joinpath('simple_' + issue.name))
+            util.dump(
+                simplified, target,
+                'simple_{name}', name=issue.name)
 
 
 @main.command()
@@ -48,12 +48,9 @@ def simplify_bitbucket_issues(target, bitbucket_repo):
 @click.argument('github_repo')
 @click.option('--token', envvar='GITHUB_TOKEN')
 def upload_issues(target, github_repo, token):
-    from . import github
+    post = util.Poster(token, util.GITHUB_REPO_IMORT_API, repo=github_repo)
     items = list(target.glob('simple_bb_*.json'))
-    client = github.get_client(github_repo, token)
-    with click.progressbar(
-            items, show_pos=True, show_percent=True,
-            label='Uploading Github Import Requests') as bar:
+    with util.progress(items, label='Uploading Github Import Requests') as bar:
         for issue in bar:
             with issue.open() as fp:
-                client.post('', fp.read())
+                post(fp.read())

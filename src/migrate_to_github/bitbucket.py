@@ -1,21 +1,12 @@
 from __future__ import print_function
-
-from .util import MiniClient
 from .formating import format_user, format_comment
 
 REPO_API = "https://api.bitbucket.org/1.0/repositories/{repo}"
 
 
-def get_client(repo):
-    """
-    :param repo: bitbucket repository as {name}/{repo} string
-    """
-    return MiniClient(REPO_API.format(repo=repo))
-
-
 class iter_issues(object):
-    def __init__(self, client):
-        self.client = client
+    def __init__(self, get):
+        self.get = get
         self._pop = None
         self._real_iter = None
         self._count = None
@@ -31,7 +22,7 @@ class iter_issues(object):
 
     def __next__(self):
         if self._real_iter is None:
-            self._real_iter = fetch_issues(self, self.client.get)
+            self._real_iter = fetch_issues(self, self.get)
         if self._pop is None:
             return next(self._real_iter)
         else:
