@@ -6,7 +6,7 @@ cache:
   - $HOME/.cache/pip
   - .tox
 env:
-- TOXEXTRA=flakes
+- TOXEXTRA=flake8
 - TOXEXTRA=test
 python:
 - "2.7"
