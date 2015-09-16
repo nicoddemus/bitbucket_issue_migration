@@ -48,7 +48,7 @@ def simplify_bitbucket_issues(target, bitbucket_repo):
 @click.argument('github_repo')
 @click.option('--token', envvar='GITHUB_TOKEN')
 def upload_issues(target, github_repo, token):
-    post = util.Poster(token, util.GITHUB_REPO_IMORT_API, repo=github_repo)
+    post = util.Poster(token, util.GITHUB_REPO_IMPORT_API, repo=github_repo)
     items = list(target.glob('simple_bb_*.json'))
     with util.progress(items, label='Uploading Github Import Requests') as bar:
         for issue in bar:
