@@ -1,17 +1,18 @@
 sudo: false
 language: python
 cache:
-  - directories:
-    - $HOME/.pip/cache
-    - $HOME/.cache/pip
+- directories:
+  - $HOME/.pip/cache
+  - $HOME/.cache/pip
+environment:
+- TOXEXTRA=flakes
+- TOXEXTRA=test
 python:
-- "3.4"
+- "2.7"
 - "3.3"
+- "3.4"
+- "3.5"
 install:
-  - pip install -U pip
-  - pip install wheel
-  - pip install pytest flake8 setuptools_scm d2to1
-  - pip install -e .
+- pip install -U pip tox virtualenv setuptools setuptools_scm
 script:
-  - py.test testing
-  - flake8 testing src setup.py
+- tox -e py-$TOXEXTRA

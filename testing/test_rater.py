@@ -8,6 +8,7 @@ from datetime import datetime
 def time():
     return mock.Mock()
 
+
 @pytest.fixture
 def limiter(time):
     return Limiter(do_sleep=time.sleep, current_utctime=time.utcnow)
