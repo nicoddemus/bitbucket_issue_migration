@@ -60,8 +60,7 @@ class Poster(object):
         self.limiter = Limiter()
         self.base_url = base_url.format(**args)
 
-
-    def __call__(self,  data):
+    def __call__(self, data):
         self.limiter.wait_before_request()
         response = self.session.post(self.base_url, data=data)
         self.limiter.process_response(response)
@@ -72,6 +71,7 @@ class Poster(object):
             debug(response.headers)
             debug(response.json())
             raise SystemExit(1)
+
 
 @attr.s
 class Limiter(object):
@@ -102,6 +102,7 @@ class Limiter(object):
         )
 
     def wait_before_request(self):
-        click.echo(" r: {self.remaining}, ws: {self.wait_seconds}".format(self=self))
+        click.echo(
+            " r: {self.remaining}, ws: {self.wait_seconds}".format(self=self))
 
         self._do_sleep(self.wait_seconds)
