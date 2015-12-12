@@ -1,5 +1,7 @@
 from __future__ import print_function
 from .formating import format_user, format_comment
+from .utils import Getter
+
 
 REPO_API = "https://api.bitbucket.org/1.0/repositories/{repo}"
 
@@ -69,3 +71,8 @@ def _parse_comment(comment):
         created_at=comment['utc_created_on'],
         body=comment['content'],
         number=comment['comment_id'], )
+
+
+def get_issues(repo):
+    get = Getter(REPO_API, repo=repo)
+    return iter_issues(get)

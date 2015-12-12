@@ -1,7 +1,7 @@
 
 import pytest
 import mock
-from migrate_to_github.util import Limiter
+from migrate_to_github.utils.poster import Limiter
 from datetime import datetime
 
 

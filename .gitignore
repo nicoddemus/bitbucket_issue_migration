@@ -1,7 +1,13 @@
-.env/
+*.egg-info
+*.pyc
+.cache/
 .eggs/
+.env/
+.idea/
+.tox/
+.tox/
+__pycache__/
 build/
 dist/
-*.egg-info
-.tox/
-.idea/
+env/
+projects-tests/
