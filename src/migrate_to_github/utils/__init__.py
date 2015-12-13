@@ -14,6 +14,7 @@ def gprocess(iterator, *k, **kw):
 NOT_GIVEN = object()
 PRETTY = {'sort_keys': True, 'indent': 2}
 BB_METADATA = 'bb-metadata.json'
+USERMAP = 'map-bb-to-gh.json'
 
 
 # TODO: needs a better place
@@ -51,3 +52,16 @@ class Getter(object):
 def debug(data):
     data = dict(data)
     click.echo(serializer.dumps(data, **PRETTY))
+
+
+def contributor(key, item):
+    if item.get(key):
+        return item[key]['username']
+
+
+def contributors(issue):
+    cont = contributor('reported_by', issue)
+    if cont:
+        yield cont
+    yield from filter(None, map(
+        partial(contributor, 'author_info'), issue['comments']))

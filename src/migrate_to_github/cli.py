@@ -1,29 +1,55 @@
-from pathlib import Path
+from pathlib2 import Path
 import click
 from . import utils
 from . import bitbucket
 
 
-from .utils import gprogress, dump
+from .utils import gprocess, dump
 
 
 @click.group(chain=True)
 @click.pass_context
-@click.option('--target', default='issues', type=Path)
+@click.argument('target', type=Path)
 def main(ctx, target):
     ctx.obj = target
-    if not target.is_dir():
-        target.mkdir(parents=True)
 
 
 @main.command()
 @click.pass_obj
 @click.argument('repo')
-def fetch_issues(target, repo):
+def init(target, repo):
+    target.mkdir(parents=True, exist_ok=True)
+    dump({'repo': repo}, target / utils.BB_METADATA)
+
+
+@main.command()
+@click.pass_obj
+def fetch_bitbucket_issues(target):
+    repo = utils.load(target / utils.BB_METADATA)['repo']
+    issue_folder = target / 'bb_issues'
+    issue_folder.mkdir(parents=True, exist_ok=True)
+
     issues = bitbucket.get_issues(repo)
-    utils.dump({'repo': repo}, target, utils.BB_METADATA)
-    for issue in utils.gprogress(issues, label="Fetching Issues"):
-        dump(issue, target, 'bb_{id:05d}.json', id=issue['local_id'])
+    for issue in utils.gprocess(issues, label="Fetching Issues"):
+        dump(issue, issue_folder / 'bb_{issue[local_id]:05d}.json'.format(
+            issue=issue))
+
+
+@main.command()
+@click.pass_obj
+def extract_users(target):
+    issue_folder = target / 'bb_issues'
+    items = list(issue_folder.glob('bb_*.json'))
+
+    usermap = utils.load(target / utils.USERMAP, default={})
+    for issue in gprocess(items, label='Preparing Github Import Requests'):
+        data = utils.load(issue)
+
+        authors = utils.contributors(data)
+        for author in authors:
+            if authors not in usermap:
+                usermap[author] = None
+        utils.dump(usermap, target / utils.USERMAP)
 
 
 @main.command()
@@ -31,12 +57,12 @@ def fetch_issues(target, repo):
 def simplify_bitbucket_issues(target):
     repo = utils.load(target / utils.BB_METADATA)['repo']
     items = list(target.glob('bb_*.json'))
-    for issue in gprogress(items, label='Preparing Github Import Requests'):
+    for issue in gprocess(items, label='Preparing Github Import Requests'):
         data = utils.load(issue)
         simplified = bitbucket.simplify_issue(data, repo=repo)
         dump(
-            simplified, target,
-            'simple_{name}', name=issue.name)
+            simplified,
+            target / ('simple_' + issue.name))
 
 
 @main.command()
@@ -46,6 +72,6 @@ def simplify_bitbucket_issues(target):
 def upload_issues(target, github_repo, token):
     post = utils.Poster(token, utils.GITHUB_REPO_IMPORT_API, repo=github_repo)
     items = list(target.glob('simple_bb_*.json'))
-    for issue in gprogress(items, label='Uploading Github Import Requests'):
+    for issue in gprocess(items, label='Uploading Github Import Requests'):
         with issue.open() as fp:
             post(fp.read())

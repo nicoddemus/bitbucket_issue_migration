@@ -16,7 +16,7 @@ class iter_issues(object):
     def __iter__(self):
         return self
 
-    def __len__(self):
+    def __length_hint__(self):
         if self._count is None:
             assert self._pop is None
             self._pop = next(self)
@@ -37,6 +37,9 @@ def fetch_issues(_iter, get):
     while True:
         issue_url = '/issues/?start={start_id}'.format(start_id=start_id)
         result = get(issue_url)
+        if 'error' in result:
+            result['url'] = issue_url
+            raise SystemExit(result)
         _iter._count = result['count']
         if not result['issues']:
             break
