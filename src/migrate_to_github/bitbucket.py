@@ -1,9 +1,20 @@
 from __future__ import print_function
 from .formating import format_user, format_comment
 from .utils import Getter
-
+import attr
 
 REPO_API = "https://api.bitbucket.org/1.0/repositories/{repo}"
+
+
+@attr.s
+class IssueFolder(object):
+    target = attr.ib()
+
+
+    @classmethod
+    def open(cls, path):
+        path.mkdir(parents=True, exists_ok=True)
+        return cls(target=path)
 
 
 class iter_issues(object):

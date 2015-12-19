@@ -24,20 +24,28 @@ def init(target, repo):
 
 @main.command()
 @click.pass_obj
-def fetch_bitbucket_issues(target):
+def fetch(target):
     repo = utils.load(target / utils.BB_METADATA)['repo']
     issue_folder = target / 'bb_issues'
     issue_folder.mkdir(parents=True, exist_ok=True)
 
     issues = bitbucket.get_issues(repo)
-    for issue in utils.gprocess(issues, label="Fetching Issues"):
-        dump(issue, issue_folder / 'bb_{issue[local_id]:05d}.json'.format(
-            issue=issue))
+    for elem in utils.gprocess(issues, label="Fetching Issues"):
+        if elem.issue:
+            dump(
+                elem.issue,
+                issue_folder / 'bb_{elem.id:05d}_issue.json'.format(elem=elem))
+            if elem.comments:
+                dump(
+                    elem.issue,
+                    issue_folder / 'bb_{elem.id:05d}_comments.json'.format(elem=elem))
+
 
 
 @main.command()
 @click.pass_obj
 def extract_users(target):
+    '''extract username list from authormap'''
     issue_folder = target / 'bb_issues'
     items = list(issue_folder.glob('bb_*.json'))
 
@@ -51,6 +59,16 @@ def extract_users(target):
                 usermap[author] = None
         utils.dump(usermap, target / utils.USERMAP)
 
+
+@main.command()
+@click.pass_obj
+@click.argument('userlist', type=Path)
+def take_users(target, userlist):
+    usermap = utils.load(target / utils.USERMAP)
+    new = utils.load(userlist)
+    for name, value in new.items():
+        if name in usermap and value is not None:
+            usermap[name] = value
 
 @main.command()
 @click.pass_obj
