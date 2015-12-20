@@ -23,5 +23,20 @@ def test_file_store_creation(tmppath):
     FileStore.open(new)
 
 
-def test_storing(tmppath):
+def test_file_store_basic_mapping(tmppath):
     store = FileStore(tmppath)
+    assert not list(store)
+    assert not len(store)
+    store[1] = {}
+    assert list(store) == ['1']
+    assert len(store) == 1
+    assert store[1] == {}
+
+    assert 1 in store
+
+    del store[1]
+    with pytest.raises(KeyError):
+        store[1]
+
+    assert 1 not in store
+
