@@ -13,8 +13,8 @@ def gprocess(iterator, *k, **kw):
 
 NOT_GIVEN = object()
 PRETTY = {'sort_keys': True, 'indent': 2}
-BB_METADATA = 'bb-metadata.json'
-USERMAP = 'map-bb-to-gh.json'
+BB_METADATA = 'bb-metadata'
+USERMAP = 'map-bb-to-gh'
 
 
 # TODO: needs a better place

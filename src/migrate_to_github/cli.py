@@ -5,41 +5,37 @@ from . import bitbucket
 
 
 from .utils import gprocess, dump
-
+from .store import FileStore
 
 @click.group(chain=True)
 @click.pass_context
 @click.argument('target', type=Path)
 def main(ctx, target):
-    ctx.obj = target
+    ctx.obj = path=FileStore(path=target)
 
 
 @main.command()
 @click.pass_obj
 @click.argument('repo')
-def init(target, repo):
-    target.mkdir(parents=True, exist_ok=True)
-    dump({'repo': repo}, target / utils.BB_METADATA)
+def init(store, repo):
+    store.path.mkdir(parents=True, exist_ok=True)
+    store[utils.BB_METADATA] = {'repo': repo}
 
 
 @main.command()
 @click.pass_obj
-def fetch(target):
-    repo = utils.load(target / utils.BB_METADATA)['repo']
-    issue_folder = target / 'bb_issues'
-    issue_folder.mkdir(parents=True, exist_ok=True)
+def fetch(store):
+    repo = store[utils.BB_METADATA]['repo']
+
+    issue_store = FileStore.ensure(store.path / 'bb' / 'issues')
+    comment_store = FileStore.ensure(store.path / 'bb' / 'comments')
 
     issues = bitbucket.get_issues(repo)
     for elem in utils.gprocess(issues, label="Fetching Issues"):
-        if elem.issue:
-            dump(
-                elem.issue,
-                issue_folder / 'bb_{elem.id:05d}_issue.json'.format(elem=elem))
-            if elem.comments:
-                dump(
-                    elem.issue,
-                    issue_folder / 'bb_{elem.id:05d}_comments.json'.format(elem=elem))
-
+        comments = elem.pop('comments')
+        eid = elem['local_id']
+        issue_store[eid] = elem
+        comment_store[eid] = comments
 
 
 @main.command()

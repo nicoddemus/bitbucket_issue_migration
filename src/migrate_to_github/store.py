@@ -16,6 +16,11 @@ class FileStore(MutableMapping):
             raise NotADirectoryError(path)
 
     @classmethod
+    def ensure(cls, path):
+        path.mkdir(exist_ok=True, parents=True)
+        return cls.open(path=path)
+
+    @classmethod
     def create(cls, path):
         path.mkdir()
         return cls.open(path=path)

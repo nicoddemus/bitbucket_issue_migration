@@ -22,6 +22,8 @@ def test_file_store_creation(tmppath):
     FileStore.create(new)
     FileStore.open(new)
 
+    FileStore.ensure(tmppath / 'test2' / '2')
+    FileStore.ensure(tmppath / 'test2')
 
 def test_file_store_basic_mapping(tmppath):
     store = FileStore(tmppath)

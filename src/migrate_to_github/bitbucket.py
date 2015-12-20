@@ -6,17 +6,6 @@ import attr
 REPO_API = "https://api.bitbucket.org/1.0/repositories/{repo}"
 
 
-@attr.s
-class IssueFolder(object):
-    target = attr.ib()
-
-
-    @classmethod
-    def open(cls, path):
-        path.mkdir(parents=True, exists_ok=True)
-        return cls(target=path)
-
-
 class iter_issues(object):
     def __init__(self, get):
         self.get = get
