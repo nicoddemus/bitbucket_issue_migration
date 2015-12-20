@@ -21,3 +21,7 @@ def test_file_store_creation(tmppath):
 
     FileStore.create(new)
     FileStore.open(new)
+
+
+def test_storing(tmppath):
+    store = FileStore(tmppath)
