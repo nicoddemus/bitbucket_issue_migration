@@ -58,6 +58,7 @@ def contributor(key, item):
     if item.get(key):
         return item[key]['username']
 
+
 def maybe_contributors(issue, comments):
     yield contributor('reported_by', issue)
     yield from (

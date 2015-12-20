@@ -44,4 +44,3 @@ def test_file_store_basic_mapping(tmppath):
         store[1]
 
     assert 1 not in store
-
