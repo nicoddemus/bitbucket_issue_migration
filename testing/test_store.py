@@ -25,6 +25,7 @@ def test_file_store_creation(tmppath):
     FileStore.ensure(tmppath / 'test2' / '2')
     FileStore.ensure(tmppath / 'test2')
 
+
 def test_file_store_basic_mapping(tmppath):
     store = FileStore(tmppath)
     assert not list(store)
@@ -33,6 +34,8 @@ def test_file_store_basic_mapping(tmppath):
     assert list(store) == ['1']
     assert len(store) == 1
     assert store[1] == {}
+
+    assert store.raw_data(1) == b'{}'
 
     assert 1 in store
 

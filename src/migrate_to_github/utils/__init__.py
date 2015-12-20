@@ -58,10 +58,12 @@ def contributor(key, item):
     if item.get(key):
         return item[key]['username']
 
+def maybe_contributors(issue, comments):
+    yield contributor('reported_by', issue)
+    yield from (
+        contributor('author_info', comment)
+        for comment in comments)
 
-def contributors(issue):
-    cont = contributor('reported_by', issue)
-    if cont:
-        yield cont
-    yield from filter(None, map(
-        partial(contributor, 'author_info'), issue['comments']))
+
+def contributors(issue, comments):
+    return filter(None, maybe_contributors(issue, comments))

@@ -4,88 +4,84 @@ from . import utils
 from . import bitbucket
 
 
-from .utils import gprocess, dump
+from .utils import gprocess
 from .store import FileStore
+
 
 @click.group(chain=True)
 @click.pass_context
 @click.argument('target', type=Path)
-def main(ctx, target):
-    ctx.obj = path=FileStore(path=target)
+def migrate_tool(ctx, target):
+    ctx.obj = FileStore(path=target)
 
 
-@main.command()
+@migrate_tool.command()
 @click.pass_obj
-@click.argument('repo')
-def init(store, repo):
+@click.argument('bitbucket')
+@click.argument('github')
+def init(store, bitbucket, github):
     store.path.mkdir(parents=True, exist_ok=True)
-    store[utils.BB_METADATA] = {'repo': repo}
+    store['repos'] = {
+        'bitbucket': bitbucket,
+        'github': github
+    }
 
 
-@main.command()
+@migrate_tool.command()
 @click.pass_obj
 def fetch(store):
-    repo = store[utils.BB_METADATA]['repo']
-
-    issue_store = FileStore.ensure(store.path / 'bb' / 'issues')
-    comment_store = FileStore.ensure(store.path / 'bb' / 'comments')
-
-    issues = bitbucket.get_issues(repo)
-    for elem in utils.gprocess(issues, label="Fetching Issues"):
-        comments = elem.pop('comments')
+    issues, comments = bitbucket.stores(store)
+    get = bitbucket.get_getter(store)
+    current_issues = bitbucket.iter_issues(get)
+    for elem in utils.gprocess(current_issues, label="Fetching Issues"):
         eid = elem['local_id']
-        issue_store[eid] = elem
-        comment_store[eid] = comments
+        issues[eid] = elem
+        comments[eid] = bitbucket.get_comments(get, elem)
 
 
-@main.command()
+@migrate_tool.command()
 @click.pass_obj
-def extract_users(target):
-    '''extract username list from authormap'''
-    issue_folder = target / 'bb_issues'
-    items = list(issue_folder.glob('bb_*.json'))
+def extract_users(store):
+    """extract username list from authormap"""
 
-    usermap = utils.load(target / utils.USERMAP, default={})
-    for issue in gprocess(items, label='Preparing Github Import Requests'):
-        data = utils.load(issue)
+    issues, comments = bitbucket.stores(store)
 
-        authors = utils.contributors(data)
+    usermap = store.get('users', {})
+    for item in gprocess(issues,
+                         label='Extracting usermap',
+                         show_pos=False, show_percent=False):
+        issue = issues[item]
+        comment_list = comments[item]
+
+        authors = utils.contributors(issue, comment_list)
+
         for author in authors:
-            if authors not in usermap:
+            if author not in usermap:
                 usermap[author] = None
-        utils.dump(usermap, target / utils.USERMAP)
+        store['users'] = usermap
 
 
-@main.command()
+@migrate_tool.command()
 @click.pass_obj
-@click.argument('userlist', type=Path)
-def take_users(target, userlist):
-    usermap = utils.load(target / utils.USERMAP)
-    new = utils.load(userlist)
-    for name, value in new.items():
-        if name in usermap and value is not None:
-            usermap[name] = value
+def convert(store):
+    issues, comments = bitbucket.stores(store)
 
-@main.command()
-@click.pass_obj
-def simplify_bitbucket_issues(target):
-    repo = utils.load(target / utils.BB_METADATA)['repo']
-    items = list(target.glob('bb_*.json'))
-    for issue in gprocess(items, label='Preparing Github Import Requests'):
-        data = utils.load(issue)
-        simplified = bitbucket.simplify_issue(data, repo=repo)
-        dump(
-            simplified,
-            target / ('simple_' + issue.name))
+    simple_store = FileStore.ensure(store.path / 'github_uploads')
+
+    repo = store['repos']['bitbucket']
+    items = issues.items()
+    for key, issue in gprocess(items, label='Preparing Import Requests'):
+        issue['comments'] = comments[key]
+        simplified = bitbucket.simplify_issue(issue, comments, repo=repo)
+        simple_store[key] = simplified
 
 
-@main.command()
+@migrate_tool.command()
 @click.pass_obj
 @click.argument('github_repo')
 @click.option('--token', envvar='GITHUB_TOKEN')
-def upload_issues(target, github_repo, token):
+def upload(store, github_repo, token):
     post = utils.Poster(token, utils.GITHUB_REPO_IMPORT_API, repo=github_repo)
-    items = list(target.glob('simple_bb_*.json'))
-    for issue in gprocess(items, label='Uploading Github Import Requests'):
-        with issue.open() as fp:
-            post(fp.read())
+    simple_store = FileStore.ensure(store.path / 'github_uploads')
+    for issue in gprocess(simple_store, label='Uploading Import Requests'):
+        post(simple_store.raw_data(issue))

@@ -31,10 +31,13 @@ class FileStore(MutableMapping):
     def __iter__(self):
         for path in self.path.glob('*.json'):
             yield path.stem
-    
+
     def _keypath(self, key):
         realkey = '{}.json'.format(key)
         return self.path / realkey
+
+    def raw_data(self, key):
+        return self._keypath(key).read_bytes()
 
     def __setitem__(self, key, value):
         dump(value, self._keypath(key))

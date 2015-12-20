@@ -1,7 +1,8 @@
 from __future__ import print_function
 from .formating import format_user, format_comment
 from .utils import Getter
-import attr
+from .store import FileStore
+
 
 REPO_API = "https://api.bitbucket.org/1.0/repositories/{repo}"
 
@@ -44,10 +45,12 @@ def fetch_issues(_iter, get):
         if not result['issues']:
             break
         start_id += len(result['issues'])
-        for item in result['issues']:
-            comment_url = '/issues/{id}/comments/'.format(id=item['local_id'])
-            item['comments'] = get(comment_url)
-            yield item
+        yield from result['issues']
+
+
+def get_comments(get, issue):
+    comment_url = '/issues/{id}/comments/'.format(id=issue['local_id'])
+    return get(comment_url)
 
 
 def simplify_issue(bb_issue, repo):
@@ -76,6 +79,12 @@ def _parse_comment(comment):
         number=comment['comment_id'], )
 
 
-def get_issues(repo):
-    get = Getter(REPO_API, repo=repo)
-    return iter_issues(get)
+def get_getter(store):
+    repo = store['repos']['bitbucket']
+    return Getter(REPO_API, repo=repo)
+
+
+def stores(store):
+    issues = FileStore.ensure(store.path / 'bb' / 'issues')
+    comments = FileStore.ensure(store.path / 'bb' / 'comments')
+    return issues, comments
