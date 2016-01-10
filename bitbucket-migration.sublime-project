@@ -1,0 +1,44 @@
+{
+	"folders":
+	[
+		{
+			"name": "Main",
+			"path": ".",
+			"folder_exclude_patterns":
+			[
+				".cache",
+				".eggs",
+				".tox",
+				"env",
+				"projects-tests",
+				"testing",
+				"src"
+			]
+		},
+		{
+			"path": "src",
+			"folder_exclude_patterns": [ "*.egg-info"]
+		},
+		{
+			"path": "testing"
+		},
+		{
+			"path": "projects-tests"
+		}
+	],
+
+
+	"build_systems":
+	[
+        {
+            "name": "tox",
+            "cmd": ["tox"]
+        },
+        {
+        	"name": "Fetch Project",
+        	"file_regex": ".*/repos.json$",
+        	"cmd": ["env/bin/migrate_to_github", "$file_base_name", "fetch", "--help"],
+        	"working_dir": "$project_base_name"
+        }
+    ]
+}

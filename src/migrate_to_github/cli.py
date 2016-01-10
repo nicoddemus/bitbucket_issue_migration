@@ -58,7 +58,7 @@ def extract_users(store):
         for author in authors:
             if author not in usermap:
                 usermap[author] = None
-        store['users'] = usermap
+    store['users'] = usermap
 
 
 @migrate_tool.command()
@@ -72,7 +72,7 @@ def convert(store):
     items = issues.items()
     for key, issue in gprocess(items, label='Preparing Import Requests'):
         issue['comments'] = comments[key]
-        simplified = bitbucket.simplify_issue(issue, comments, repo=repo)
+        simplified = bitbucket.simplify_issue(issue, repo=repo)
         simple_store[key] = simplified
 
 

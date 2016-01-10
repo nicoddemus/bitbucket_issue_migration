@@ -10,4 +10,6 @@ __pycache__/
 build/
 dist/
 env/
-projects-tests/
+projects-tests/*/bb
+projects-tests/*/github_uploads
+bitbucket-migration.sublime-workspace
