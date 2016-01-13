@@ -16,7 +16,7 @@ def refresh_usermap(source, target, union=False, _warn=warn):
         if targetvalue is not None and value != targetvalue:
             _warn('for {key} the {targetvalue} !0 {value}',
                   key=key, targetvalue=targetvalue, value=value)
-            continue    
+            continue
         if key in target or union:
             target[key] = value
 
