@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from migrate_to_github import utils
 from . import debug
 
-    
+
 @attr.s
 class Limiter(object):
     _do_sleep = attr.ib(default=sleep, repr=False)
@@ -63,7 +63,7 @@ class Poster(object):
     def __call__(self, data):
         self.limiter.wait_before_request()
         response = self.limiter.process(
-            self.session.post, self.base_url, data=data)
+                self.session.post, self.base_url, data=data)
         if response.status_code in (200, 202):
             return response.json()
         else:

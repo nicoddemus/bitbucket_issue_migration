@@ -1,7 +1,6 @@
 import json as serializer
 import requests
 import click
-from functools import partial
 
 
 def gprocess(iterator, *k, **kw):

@@ -1,8 +1,9 @@
 from __future__ import print_function
+from dateutil.parser import parse
+
 from .formating import format_user, format_comment
 from .utils import Getter
 from .store import FileStore
-
 
 REPO_API = "https://api.bitbucket.org/1.0/repositories/{repo}"
 
@@ -48,9 +49,28 @@ def fetch_issues(_iter, get):
         yield from result['issues']
 
 
-def get_comments(get, issue):
-    comment_url = '/issues/{id}/comments/'.format(id=issue['local_id'])
-    return get(comment_url)
+def ctime(mapping):
+    return parse(mapping['utc_created_on'])
+
+
+def needs_update(issue, existing_comments):
+    if not issue['comment_count']:
+        return False
+    if existing_comments is None:
+        return True
+    if len(existing_comments) != issue['comment_count']:
+        return True
+    issue_ctime = ctime(issue)
+    comment_ctime = max(map(ctime, existing_comments), default=None)
+    return comment_ctime is None or issue_ctime >= comment_ctime
+
+
+def get_comments(get, issue, existing_comments):
+    if needs_update(issue, existing_comments):
+        comment_url = '/issues/{id}/comments/'.format(id=issue['local_id'])
+        return get(comment_url)
+    else:
+        return existing_comments
 
 
 def simplify_issue(bb_issue, repo):
@@ -64,7 +84,7 @@ def simplify_issue(bb_issue, repo):
     simplified['comments'] = [
         {'body': format_comment(_parse_comment(x))}
         for x in bb_issue['comments']
-    ]
+        ]
     return simplified
 
 
@@ -73,10 +93,10 @@ def _parse_comment(comment):
     Parse a comment as returned from Bitbucket API.
     """
     return dict(
-        user=format_user(comment['author_info']),
-        created_at=comment['utc_created_on'],
-        body=comment['content'],
-        number=comment['comment_id'], )
+            user=format_user(comment['author_info']),
+            created_at=comment['utc_created_on'],
+            body=comment['content'],
+            number=comment['comment_id'], )
 
 
 def get_getter(store):

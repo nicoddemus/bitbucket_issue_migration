@@ -13,6 +13,7 @@ def main():
 def mapstores(paths, func):
     for path in paths:
         store = FileStore.open(path)
+        click.echo('Working on {}'.format(path))
         func(store)
 
 

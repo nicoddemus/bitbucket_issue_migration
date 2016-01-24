@@ -20,7 +20,8 @@ def fetch(store):
     for elem in utils.gprocess(current_issues, label="Fetching Issues"):
         eid = elem['local_id']
         issues[eid] = elem
-        comments[eid] = bitbucket.get_comments(get, elem)
+        existing = comments.get(eid)
+        comments[eid] = bitbucket.get_comments(get, elem, existing)
 
 
 def extract_users(store):
