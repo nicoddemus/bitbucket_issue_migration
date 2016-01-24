@@ -1,6 +1,6 @@
 import click
 from pathlib2 import Path
-from .utils import load, dump
+from migrate_to_github.utils import load, dump
 
 
 def warn(message, **kwargs):
@@ -26,13 +26,16 @@ def refresh_usermap(source, target, union=False, _warn=warn):
 def main(usermaps):
 
     loaded = {path: load(path) for path in usermaps}
-    merged = {}
-    for usermap in loaded.values():
-        refresh_usermap(
-            source=usermap, target=merged, union=True)
-
-    for usermap in loaded.values():
-        refresh_usermap(
-            source=merged, target=usermap, union=False)
+    sync_usermaps(loaded.values())
     for path, value in loaded.items():
         dump(value, path)
+
+
+def sync_usermaps(mappings):
+    merged = {}
+    for user_map in mappings:
+        refresh_usermap(
+                source=user_map, target=merged, union=True)
+    for user_map in mappings:
+        refresh_usermap(
+                source=merged, target=user_map, union=False)

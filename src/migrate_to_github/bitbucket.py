@@ -17,7 +17,7 @@ class iter_issues(object):
     def __iter__(self):
         return self
 
-    def __length_hint__(self):
+    def __len__(self):
         if self._count is None:
             assert self._pop is None
             self._pop = next(self)

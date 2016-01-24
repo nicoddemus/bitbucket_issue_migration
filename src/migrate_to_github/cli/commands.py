@@ -1,34 +1,18 @@
-from pathlib2 import Path
-import click
-from . import utils
-from . import bitbucket
+from migrate_to_github.utils.poster import get_github_issue_poster
+from migrate_to_github import bitbucket
+from migrate_to_github import utils
+from migrate_to_github.utils import gprocess
+from migrate_to_github.store import FileStore
 
 
-from .utils import gprocess
-from .store import FileStore
-
-
-@click.group(chain=True)
-@click.pass_context
-@click.argument('target', type=Path)
-def migrate_tool(ctx, target):
-    ctx.obj = FileStore(path=target)
-
-
-@migrate_tool.command()
-@click.pass_obj
-@click.argument('bitbucket')
-@click.argument('github')
-def init(store, bitbucket, github):
-    store.path.mkdir(parents=True, exist_ok=True)
+def init(*, path, bitbucket, github):
+    store = FileStore.ensure(path)
     store['repos'] = {
         'bitbucket': bitbucket,
         'github': github
     }
 
 
-@migrate_tool.command()
-@click.pass_obj
 def fetch(store):
     issues, comments = bitbucket.stores(store)
     get = bitbucket.get_getter(store)
@@ -39,8 +23,6 @@ def fetch(store):
         comments[eid] = bitbucket.get_comments(get, elem)
 
 
-@migrate_tool.command()
-@click.pass_obj
 def extract_users(store):
     """extract username list from authormap"""
 
@@ -61,8 +43,6 @@ def extract_users(store):
     store['users'] = usermap
 
 
-@migrate_tool.command()
-@click.pass_obj
 def convert(store):
     issues, comments = bitbucket.stores(store)
 
@@ -76,12 +56,8 @@ def convert(store):
         simple_store[key] = simplified
 
 
-@migrate_tool.command()
-@click.pass_obj
-@click.argument('github_repo')
-@click.option('--token', envvar='GITHUB_TOKEN')
-def upload(store, github_repo, token):
-    post = utils.Poster(token, utils.GITHUB_REPO_IMPORT_API, repo=github_repo)
+def upload_github_issues(store, token):
+    post = get_github_issue_poster(store, token)
     simple_store = FileStore.ensure(store.path / 'github_uploads')
     for issue in gprocess(simple_store, label='Uploading Import Requests'):
         post(simple_store.raw_data(issue))

@@ -1,9 +1,7 @@
-from click.testing import CliRunner
-from migrate_to_github.utils import dump, load
-
-from migrate_to_github.usermap_tool import main, refresh_usermap
-
 import pytest
+from click.testing import CliRunner
+from migrate_to_github.cli.usermap import main, refresh_usermap
+from migrate_to_github.utils import dump, load
 
 
 def die(m, **kw):

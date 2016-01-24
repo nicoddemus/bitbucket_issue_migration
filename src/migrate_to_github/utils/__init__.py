@@ -3,11 +3,11 @@ import requests
 import click
 from functools import partial
 
-progress = partial(click.progressbar, show_pos=True, show_percent=True)
-
 
 def gprocess(iterator, *k, **kw):
-    with progress(iterator, *k, **kw) as bar:
+    with click.progressbar(iterator, *k,
+                           show_pos=True, show_percent=True,
+                           **kw) as bar:
         yield from bar
 
 

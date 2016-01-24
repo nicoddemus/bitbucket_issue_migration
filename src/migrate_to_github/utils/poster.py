@@ -3,9 +3,11 @@ import requests
 import click
 from time import sleep
 from datetime import datetime, timedelta
+
+from migrate_to_github import utils
 from . import debug
 
-
+    
 @attr.s
 class Limiter(object):
     _do_sleep = attr.ib(default=sleep, repr=False)
@@ -69,3 +71,9 @@ class Poster(object):
             debug(response.headers)
             debug(response.json())
             raise SystemExit(1)
+
+
+def get_github_issue_poster(store, token):
+    github_repo = store['repos']['github']
+    post = utils.Poster(token, utils.GITHUB_REPO_IMPORT_API, repo=github_repo)
+    return post
