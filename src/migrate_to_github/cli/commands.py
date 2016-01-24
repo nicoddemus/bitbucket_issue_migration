@@ -31,10 +31,9 @@ def extract_users(store):
 
     usermap = store.get('users', {})
     for item in gprocess(issues,
-                         label='Extracting usermap',
-                         show_pos=False, show_percent=False):
+                         label='Extracting usermap'):
         issue = issues[item]
-        comment_list = comments[item]
+        comment_list = comments[item] or []  # accounts for None
 
         authors = utils.contributors(issue, comment_list)
 
