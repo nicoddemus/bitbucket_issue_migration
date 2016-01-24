@@ -3,14 +3,14 @@ import click
 
 from . import commands
 from ..store import FileStore
-
+from .usermap import sync_usermaps
 
 @click.group(chain=True)
 def main():
     pass
 
 
-def mapstores(paths, func):
+def map_stores(paths, func):
     for path in paths:
         store = FileStore.open(path)
         click.echo('Working on {}'.format(path))
@@ -25,14 +25,22 @@ def command(function):
 
 @command
 def fetch(stores):
-    mapstores(stores, commands.fetch)
+    map_stores(stores, commands.fetch)
 
 
 @command
 def extract_users(stores):
-    mapstores(stores, commands.extract_users)
+    map_stores(stores, commands.extract_users)
 
 
 @command
 def convert(stores):
-    mapstores(stores, commands.convert)
+    map_stores(stores, commands.convert)
+
+@command
+def sync(stores):
+    stores = map(FileStore.open, stores)
+    maps = [store.get('users', {}) for store in stores]
+    sync_usermaps(maps)
+    for store, mapping in zip(stores, maps):
+        store['users'] = map
