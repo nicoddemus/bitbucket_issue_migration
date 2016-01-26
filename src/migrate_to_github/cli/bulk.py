@@ -5,6 +5,7 @@ from . import commands
 from ..store import FileStore
 from .usermap import sync_usermaps
 
+
 @click.group(chain=True)
 def main():
     pass
@@ -36,6 +37,7 @@ def extract_users(stores):
 @command
 def convert(stores):
     map_stores(stores, commands.convert)
+
 
 @command
 def sync(stores):
