@@ -42,7 +42,7 @@ def convert(stores):
 @command
 def sync(stores):
     stores = map(FileStore.open, stores)
-    maps = [store.get('users', {}) for store in stores]
-    sync_usermaps(maps)
-    for store, mapping in zip(stores, maps):
+    mappings = [store.get('users', {}) for store in stores]
+    sync_usermaps(mappings)
+    for store, mapping in zip(stores, mappings):
         store['users'] = map
