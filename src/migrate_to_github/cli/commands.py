@@ -52,7 +52,10 @@ def convert(store):
     items = issues.items()
     for key, issue in gprocess(items, label='Preparing Import Requests'):
         issue['comments'] = comments[key]
-        simplified = bitbucket.simplify_issue(issue, repo=repo)
+        simplified = bitbucket.simplify_issue(
+                bb_issue=issue,
+                repo=repo,
+                usermap=store.get('users', {}))
         simple_store[key] = simplified
 
 

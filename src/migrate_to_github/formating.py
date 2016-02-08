@@ -17,7 +17,7 @@ def format_name(issue):
     return format_user(issue.get('reported_by'))
 
 
-def format_body(issue, repo):
+def format_body(issue, repo, usermap=None):
     content = clean_body(issue['content'])
     return """{body}
 
@@ -34,7 +34,7 @@ def format_body(issue, repo):
     )
 
 
-def format_comment(comment):
+def format_comment(comment, usermap):
     return """Original comment by {user}
 
 {body}""".format(**comment)

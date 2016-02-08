@@ -1,7 +1,7 @@
 from __future__ import print_function
 from dateutil.parser import parse
 
-from .formating import format_user, format_comment
+from .formating import format_user, format_comment, format_body
 from .utils import Getter
 from .store import FileStore
 
@@ -73,19 +73,23 @@ def get_comments(get, issue, existing_comments):
         return existing_comments
 
 
-def simplify_issue(bb_issue, repo):
-    simplified = {}
-    issue = simplified['issue'] = {}
-    issue['title'] = bb_issue['title']
-    from .formating import format_body
-    issue['body'] = format_body(bb_issue, repo)
-    if bb_issue['status'] in 'closed wontfix resolved':
-        issue['closed'] = True
-    simplified['comments'] = [
-        {'body': format_comment(_parse_comment(x))}
-        for x in bb_issue['comments']
-        ]
-    return simplified
+def simplify_issue(bb_issue, repo, usermap):
+    return {
+        'issue': {
+            'title': bb_issue['title'],
+            'body': format_body(bb_issue, repo, usermap),
+            'closed': bb_issue['status'] in 'closed wontfix resolved',
+        },
+        'comments': [
+            simplify_comment(comment, usermap)
+            for comment in (bb_issue['comments'] or [])
+        ],
+    }
+
+
+def simplify_comment(comment, usermap):
+    comment = _parse_comment(comment)
+    return {'body': format_comment(comment, usermap)}
 
 
 def _parse_comment(comment):
