@@ -1,6 +1,4 @@
 import click
-import attr
-import collections
 
 
 def warn(message, **kwargs):
@@ -20,6 +18,7 @@ def refresh_usermap(source, target, union=False, _warn=warn):
         if key in target or union:
             target[key] = value
 
+
 def bitbucket_userlink(name):
     return '[{name}@bitbucket](https://bitbucket.org/{name})'
 
@@ -33,24 +32,9 @@ def nametext(map, name):
         return bitbucket_userlink(name)
 
 
-
-
-@attr.s
-class UserMap(object):
-    map = attr.ib(validators=attr.validators.instance_of(collections.MutableMapping))
-
-    def add_from(self, source):
-        refresh_usermap(
-                source=source, target=self.map, union=True)
-
-    def refresh_on(self, target):
-        refresh_usermap(
-                source=self.map, target=target, union=False)
-
-    @classmethod
-    def sync_all(cls, mappings):
-        merged = cls()
-        for user_map in mappings:
-            merged.add_from(user_map)
-        for user_map in mappings:
-            merged.refresh_on(user_map)
+def sync_all(mappings):
+    merged = {}
+    for user_map in mappings:
+        refresh_usermap(source=user_map, target=merged, union=True)
+    for user_map in mappings:
+        refresh_usermap(source=merged, target=user_map, union=False)

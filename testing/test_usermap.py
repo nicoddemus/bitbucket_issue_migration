@@ -1,6 +1,7 @@
 import pytest
 from click.testing import CliRunner
-from migrate_to_github.cli.usermap import main, refresh_usermap
+from migrate_to_github.cli.usermap import main
+from migrate_to_github.usermap import refresh_usermap
 from migrate_to_github.utils import dump, load
 
 

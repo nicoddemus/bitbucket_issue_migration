@@ -3,7 +3,7 @@ import click
 
 from . import commands
 from ..store import FileStore
-from ..usermap import UserMap
+from ..usermap import sync_all
 
 
 @click.group(chain=True)
@@ -43,6 +43,6 @@ def convert(stores):
 def sync(stores):
     stores = map(FileStore.open, stores)
     mappings = [store.get('users', {}) for store in stores]
-    UserMap.sync_all(mappings)
+    sync_all(mappings)
     for store, mapping in zip(stores, mappings):
-        store['users'] = map
+        store['users'] = mapping

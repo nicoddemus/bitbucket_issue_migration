@@ -1,7 +1,7 @@
 import click
 from pathlib2 import Path
 from migrate_to_github.utils import load, dump
-from migrate_to_github.usermap import UserMap
+from ..usermap import sync_all
 
 
 @click.command()
@@ -9,7 +9,6 @@ from migrate_to_github.usermap import UserMap
 def main(usermaps):
 
     loaded = {path: load(path) for path in usermaps}
-    UserMap.sync_all(loaded.values())
+    sync_all(loaded.values())
     for path, value in loaded.items():
         dump(value, path)
-
