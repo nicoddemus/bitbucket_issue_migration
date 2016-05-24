@@ -41,8 +41,11 @@ def convert(stores):
 
 @command
 def sync(stores):
-    stores = map(FileStore.open, stores)
+    stores = list(map(FileStore.open, stores))
     mappings = [store.get('users', {}) for store in stores]
     sync_all(mappings)
     for store, mapping in zip(stores, mappings):
         store['users'] = mapping
+
+    from .usermap import mapstats
+    mapstats(zip((x.path for x in stores), mappings))
