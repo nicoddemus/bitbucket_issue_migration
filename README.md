@@ -1,3 +1,11 @@
+**Important**
+
+This script is not actually maintained. 
+Please checkout the much nicer and up-to-date fork in [RonnyPfannschmidt/bitbucket_issue_migration](https://github.com/RonnyPfannschmidt/bitbucket_issue_migration) which
+has signifcant improvements over this implementation.
+
+----
+
 # bitbucket Issues Migration
 
 This is a small script that will migrate bitbucket issues to a github project.
